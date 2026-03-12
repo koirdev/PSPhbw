@@ -1,0 +1,73 @@
+#include <pspkernel.h>
+#include <pspdebug.h>
+#include <pspdisplay.h>
+#include <pspctrl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pspsdk.h>
+#include <psputility.h>
+
+
+
+static int exitRequest = 1;
+
+int isRunning() 
+{
+    return exitRequest;
+}
+
+
+
+int exitCallback(int arg1, int arg2, void *common)
+{
+    exitRequest = 0;
+    return 0;
+}
+
+
+
+int callbackThread(SceSize args, void *argp)
+{
+    int callbackID;
+
+    callbackID = sceKernelCreateCallback("Exit Callback", exitCallback, NULL);
+    sceKernelRegisterExitCallback(callbackID);
+
+    sceKernelSleepThreadCB();
+
+    return 0;
+}
+
+
+void setupExitCallback() 
+{
+
+    int threadID = 0;
+
+    threadID = sceKernelCreateThread("Callback Update Thread", callbackThread, 0x11, 0xFA0, THREAD_ATTR_USER, 0);
+
+    if(threadID >= 0) 
+    {
+        sceKernelStartThread(threadID, 0, 0);
+
+    }
+    return threadID;
+}
+
+PSP_MODULE_INFO("PSPhbw", PSP_MODULE_USER, 0, 0);
+
+int main(int argc, char** argv)
+{
+
+    setupExitCallback();
+    pspDebugScreenInit();
+
+    while(isRunning()) {
+        sceDisplayWaitVblankStart();
+        pspDebugScreenSetXY(0,0);
+        pspDebugScreenPrintf("Hello World!\nver. 0.1");
+    }
+
+    sceKernelExitGame();
+    return 0;
+}
